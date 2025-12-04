@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Joulun osaaja – Eduro</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="global-counter" aria-live="polite">
+      🎄 Joulun osaajia luotu tänään: <span id="participant-count">0</span>
+    </header>
+
+    <main>
+      <section id="screen-1" class="screen active" aria-label="Tervetuloa">
+        <div class="panel">
+          <p class="eyebrow">Tervetuloa</p>
+          <h1>KUKA SINÄ OLET JOULUNA?</h1>
+          <p class="subtext">Tonttukone selvittää jouluroolisi</p>
+          <button id="start-btn" class="primary">KÄYNNISTÄ TONTTUKONE</button>
+        </div>
+      </section>
+
+      <section id="screen-2" class="screen" aria-label="Kamera">
+        <div class="panel camera-panel">
+          <h2>Ota tonttukuva</h2>
+          <div class="video-wrapper">
+            <video id="camera-feed" autoplay playsinline></video>
+            <canvas id="capture-canvas" class="hidden" aria-hidden="true"></canvas>
+          </div>
+          <div class="actions">
+            <button id="capture-btn" class="primary">OTA TONTTUKUVA</button>
+            <p class="hint" id="camera-hint">Salli kameran käyttö, jotta tonttukone toimii.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-3" class="screen" aria-label="Analyysi">
+        <div class="panel">
+          <h2>Analysoidaan tonttupotentiaalia…</h2>
+          <div class="loader" role="status" aria-live="polite">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <p class="subtext">Taianomainen tonttuanalyysi käynnissä</p>
+        </div>
+      </section>
+
+      <section id="screen-4" class="screen" aria-label="Tulokset">
+        <div class="panel result-panel">
+          <div class="photo-frame">
+            <img id="result-photo" alt="Tonttukuva" />
+            <img class="frame-overlay" src="assets/frame.png" alt="Koristeellinen kehys" />
+          </div>
+          <div class="result-text">
+            <p class="eyebrow">Tonttutulos</p>
+            <h2 id="result-name">TONTTUNIMI</h2>
+            <p id="result-title" class="title-line"></p>
+            <p id="result-power" class="power-line"></p>
+            <div class="actions">
+              <button id="print-btn" class="secondary">TULOSTA TODISTUS</button>
+              <button id="next-btn" class="primary">SEURAAVA TONTTU</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
