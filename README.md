@@ -121,3 +121,37 @@ Ensimmäinen tavoite: **toimiva demo pikkujouluihin 16.12**
 2. Backend-printti-API
 3. AI-tekstien liittäminen
 4. Visuaalinen viimeistely
+
+---
+
+## 🚀 Backend-käyttöohjeet (Windows)
+
+1) Asenna riippuvuudet:
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+2) Luo `backend/.env` tiedosto arvoilla:
+
+```env
+PRINT_API_TOKEN=eduro-print-secret
+OPENROUTER_API_KEY=sk-or-... (optional, not used yet)
+GEMINI_API_KEY=... (optional, not used yet)
+```
+
+3) Käynnistä palvelin:
+
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+4) Frontend kutsu backendia:
+
+- Avaa `index.html` selaimessa
+- Käy läpi kuvaus- ja analyysivaiheet
+- Paina **“Tulosta todistus”**
+- PDF todistus generoidaan ja lähetetään automaattisesti Windowsin oletustulostimelle

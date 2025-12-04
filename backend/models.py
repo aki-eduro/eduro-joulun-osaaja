@@ -1,5 +1,7 @@
 """Pydantic models for the certificate printing API."""
 
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -11,4 +13,4 @@ class CertificateData(BaseModel):
     title: str
     description: str
     jouluPower: str
-    imageDataUrl: str | None = None
+    imageDataUrl: Optional[str] = None
