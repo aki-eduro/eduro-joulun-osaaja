@@ -8,11 +8,11 @@ Local development quickstart (PowerShell on Windows)::
     pip install -r requirements.txt
     uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-The backend expects a `.env` file in this folder with at least:
+The backend expects a `.env` file in this folder with at least::
 
-    OPENROUTER_API_KEY=sk-or-xxxx
-    GEMINI_API_KEY=your-gemini-key
     PRINT_API_TOKEN=eduro-print-secret
+    OPENROUTER_API_KEY=sk-or-xxxx   # optional, not used yet
+    GEMINI_API_KEY=your-gemini-key  # optional, not used yet
 
 The frontend should POST certificate data to http://localhost:8000/api/print-certificate
 using the Authorization header `Bearer <PRINT_API_TOKEN>`.
@@ -33,6 +33,7 @@ from certificate_generator import generate_certificate_pdf
 from models import CertificateData
 
 BASE_DIR = Path(__file__).resolve().parent
+TMP_DIR = BASE_DIR / "tmp"
 load_dotenv(BASE_DIR / ".env")
 
 PRINT_API_TOKEN = os.environ.get("PRINT_API_TOKEN")
@@ -43,7 +44,8 @@ app = FastAPI(title="Joulun osaaja Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost"],
+    allow_origin_regex=r"http://localhost(:\\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,11 +83,11 @@ def print_certificate(
 ) -> dict[str, str]:
     """Generate and print a certificate based on the posted data."""
 
-    pdf_path = generate_certificate_pdf(data)
+    pdf_path = generate_certificate_pdf(data, output_dir=TMP_DIR)
 
     try:
         if hasattr(os, "startfile"):
-            os.startfile(pdf_path, "print")  # type: ignore[attr-defined]
+            os.startfile(str(pdf_path), "print")  # type: ignore[attr-defined]
         else:
             raise RuntimeError("Printing is only supported on Windows via os.startfile.")
 
@@ -95,9 +97,9 @@ def print_certificate(
         print(f"Printing failed: {exc}")
         raise HTTPException(status_code=500, detail="Printing failed") from exc
     finally:
-        if os.path.exists(pdf_path):
+        if pdf_path.exists():
             try:
-                os.remove(pdf_path)
+                pdf_path.unlink()
             except OSError:
                 # If the file is locked momentarily by the print spooler, it will
                 # eventually be released; we avoid masking the main error path.

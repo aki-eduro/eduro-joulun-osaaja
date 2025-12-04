@@ -18,6 +18,13 @@ let participantCount = 0;
 let latestResult = null;
 let analysisTimeoutId = null;
 
+const visitorNames = [
+  'Eduro-vieras',
+  'Joulun ystävä',
+  'Pikkujoulun sankari',
+  'Tonttukoneen sankari'
+];
+
 const tonttuNames = [
   'Säihkysäde',
   'Piparinipsu',
@@ -43,6 +50,10 @@ const jouluvoimat = [
   '+15 % tontun taikapölyä',
   '+30 % naurua per minuutti'
 ];
+
+const printStatusEl = document.createElement('p');
+printStatusEl.className = 'hint';
+printStatusEl.id = 'print-status';
 
 function showScreen(id) {
   screens.forEach((screen) => {
@@ -93,11 +104,12 @@ function startAnalysis(imageData) {
   }
 
   analysisTimeoutId = setTimeout(() => {
-    const name = randomItem(tonttuNames);
+    const name = randomItem(visitorNames);
+    const elfName = randomItem(tonttuNames);
     const title = randomItem(tonttuTitles);
-    const power = randomItem(jouluvoimat);
+    const jouluPower = randomItem(jouluvoimat);
 
-    latestResult = prepareResultData({ name, title, power, imageData });
+    latestResult = prepareResultData({ name, elfName, title, jouluPower, imageDataUrl: imageData });
     displayResult(latestResult);
   }, 2000);
 }
@@ -105,17 +117,26 @@ function startAnalysis(imageData) {
 function prepareResultData(result) {
   // 🚧 Future AI API hook: replace local random generation with backend call
   // to fetch dynamic tonttunimi, titteli ja jouluvoima using the captured image.
+  const description = `Tonttukone tunnistaa, että ${result.elfName} on ${result.title.toLowerCase()} ` +
+    `ja levittää iloa kaikkialle minne kulkee. ${result.jouluPower}!`;
+
   return {
     ...result,
+    description,
     createdAt: new Date().toISOString(),
   };
 }
 
 function displayResult(result) {
-  resultPhoto.src = result.imageData;
-  resultNameEl.textContent = result.name.toUpperCase();
+  if (!printStatusEl.parentElement) {
+    printBtn?.parentElement?.appendChild(printStatusEl);
+  }
+
+  printStatusEl.textContent = '';
+  resultPhoto.src = result.imageDataUrl || '';
+  resultNameEl.textContent = result.elfName.toUpperCase();
   resultTitleEl.textContent = result.title;
-  resultPowerEl.textContent = result.power;
+  resultPowerEl.textContent = result.jouluPower;
 
   participantCount += 1;
   participantCountEl.textContent = participantCount;
@@ -132,6 +153,7 @@ function resetExperience() {
   resultNameEl.textContent = 'TONTTUNIMI';
   resultTitleEl.textContent = '';
   resultPowerEl.textContent = '';
+  printStatusEl.textContent = '';
   showScreen('screen-1');
 }
 
@@ -146,10 +168,45 @@ captureBtn?.addEventListener('click', () => {
   startAnalysis(imageData);
 });
 
+async function sendToPrinter() {
+  if (!latestResult) return;
+
+  printStatusEl.textContent = 'Lähetetään tulostimeen…';
+  printStatusEl.style.color = '#1f6f43';
+
+  try {
+    const response = await fetch('http://localhost:8000/api/print-certificate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer eduro-print-secret',
+      },
+      body: JSON.stringify({
+        name: latestResult.name,
+        elfName: latestResult.elfName,
+        title: latestResult.title,
+        description: latestResult.description,
+        jouluPower: latestResult.jouluPower,
+        imageDataUrl: latestResult.imageDataUrl,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Tulostus epäonnistui: ${response.status}`);
+    }
+
+    printStatusEl.textContent = 'Todistus lähetetty tulostimeen';
+    printStatusEl.style.color = '#1f6f43';
+  } catch (error) {
+    console.error('Tulostus epäonnistui', error);
+    printStatusEl.textContent = 'Tulostus epäonnistui. Tarkista yhteys tai yritä uudelleen.';
+    printStatusEl.style.color = '#b00020';
+  }
+}
+
 printBtn?.addEventListener('click', () => {
-  // 🚧 Future print API hook: replace console.log with backend call that
-  // sends `latestResult` to a PDF/tulostus-palvelu without user interaction.
-  console.log('PRINT', latestResult);
+  if (!latestResult) return;
+  sendToPrinter();
 });
 
 nextBtn?.addEventListener('click', resetExperience);

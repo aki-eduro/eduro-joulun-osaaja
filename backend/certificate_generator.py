@@ -3,20 +3,20 @@
 from __future__ import annotations
 
 import base64
-import os
+from pathlib import Path
 import tempfile
 from datetime import date
 from typing import Optional
 
-from reportlab.lib.pagesizes import A4, A5
+from reportlab.lib.pagesizes import A5
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader, simpleSplit
 from reportlab.pdfgen import canvas
 
-from .models import CertificateData
+from models import CertificateData
 
 
-def _save_image_from_data_url(image_data_url: Optional[str]) -> Optional[str]:
+def _save_image_from_data_url(image_data_url: Optional[str], output_dir: Path) -> Optional[Path]:
     """Decode a data URL and persist it as a temporary PNG file.
 
     The frontend sends the webcam capture as a data URL. This helper strips the
@@ -34,35 +34,30 @@ def _save_image_from_data_url(image_data_url: Optional[str]) -> Optional[str]:
     except (base64.binascii.Error, ValueError) as exc:  # type: ignore[attr-defined]
         raise ValueError("Invalid image data URL") from exc
 
-    fd, path = tempfile.mkstemp(suffix=".png")
-    with os.fdopen(fd, "wb") as temp_file:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False, dir=output_dir) as temp_file:
         temp_file.write(binary)
+        return Path(temp_file.name)
 
-    return path
 
+def generate_certificate_pdf(data: CertificateData, output_dir: Path) -> Path:
+    """Create a printable certificate PDF and return its path."""
 
-def generate_certificate_pdf(data: CertificateData) -> str:
-    """Create a printable certificate PDF and return its path.
+    output_dir.mkdir(parents=True, exist_ok=True)
+    image_path = _save_image_from_data_url(data.imageDataUrl, output_dir)
 
-    The PDF is generated on an A5 page (portrait). A4 can be swapped in easily
-    by changing ``page_size`` below if needed later.
-    """
-
-    image_path = _save_image_from_data_url(data.imageDataUrl)
-
-    page_size = A5
-    page_width, page_height = page_size
+    page_width, page_height = A5  # Portrait A5 by default
     margin = 15 * mm
 
-    fd, pdf_path = tempfile.mkstemp(suffix=".pdf")
-    os.close(fd)
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False, dir=output_dir) as pdf_file:
+        pdf_path = Path(pdf_file.name)
 
-    c = canvas.Canvas(pdf_path, pagesize=page_size)
+    c = canvas.Canvas(str(pdf_path), pagesize=(page_width, page_height))
     y_position = page_height - margin
 
     try:
         if image_path:
-            image_reader = ImageReader(image_path)
+            image_reader = ImageReader(str(image_path))
             img_width, img_height = image_reader.getSize()
 
             max_width = page_width - 2 * margin
@@ -80,17 +75,17 @@ def generate_certificate_pdf(data: CertificateData) -> str:
             )
             y_position -= draw_height + 12
 
-        c.setFont("Helvetica-Bold", 18)
+        c.setFont("Helvetica", 14)
         c.drawCentredString(page_width / 2, y_position, data.name)
-        y_position -= 22
+        y_position -= 20
 
-        c.setFont("Helvetica-Bold", 22)
+        c.setFont("Helvetica-Bold", 24)
         c.drawCentredString(page_width / 2, y_position, data.elfName)
-        y_position -= 26
+        y_position -= 28
 
         c.setFont("Helvetica-Bold", 16)
         c.drawCentredString(page_width / 2, y_position, data.title)
-        y_position -= 20
+        y_position -= 22
 
         c.setFont("Helvetica", 12)
         description_lines = simpleSplit(data.description, "Helvetica", 12, page_width - 2 * margin)
@@ -102,14 +97,14 @@ def generate_certificate_pdf(data: CertificateData) -> str:
         c.setFont("Helvetica-Bold", 14)
         c.drawCentredString(page_width / 2, y_position, data.jouluPower)
 
-        footer_text = f"Eduro – Joulun osaaja ({date.today().isoformat()})"
+        footer_text = f"Eduro – Joulun osaaja | {date.today().strftime('%d.%m.%Y')}"
         c.setFont("Helvetica", 10)
         c.drawCentredString(page_width / 2, margin, footer_text)
 
         c.showPage()
         c.save()
     finally:
-        if image_path and os.path.exists(image_path):
-            os.remove(image_path)
+        if image_path and image_path.exists():
+            image_path.unlink(missing_ok=True)
 
     return pdf_path
